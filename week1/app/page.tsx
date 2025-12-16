@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatEther } from 'viem';
+import { createConfig, http, injected, WagmiProvider, useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
+import { mainnet, sepolia } from 'wagmi/chains';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<any>;
@@ -224,6 +227,14 @@ export default function Page() {
       <hr style={{ margin: '24px 0' }} />
 
       <ProtectedDemo />
+
+      <hr style={{ margin: '32px 0' }} />
+
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>(Case 2) wagmi / viem</h2>
+      <p style={{ color: '#666', marginBottom: 16 }}>
+        wagmi 훅으로 지갑 연결/계정 상태/서명을 추상화합니다. (injected connector)
+      </p>
+      <WagmiCase />
     </main>
   );
 }
@@ -255,4 +266,165 @@ function ProtectedDemo() {
   );
 }
 
+
+// wagmi / viem
+
+const wagmiConfig = createConfig({
+  chains: [mainnet, sepolia],
+  transports: {
+    [mainnet.id]: http(),
+    [sepolia.id]: http(),
+  },
+  connectors: [injected()],
+  ssr: true,
+});
+
+function WagmiCase() {
+  const [queryClient] = useState(() => new QueryClient());
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <WagmiLoginBlock />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+function WagmiLoginBlock() {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors, status: connectStatus, error: connectError } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { signMessageAsync } = useSignMessage();
+
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [serverUser, setServerUser] = useState<{ address: string } | null>(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setServerUser({ address: data.address });
+        } else {
+          setServerUser(null);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    check();
+  }, []);
+
+  const onConnect = useCallback(async () => {
+    setErr('');
+    try {
+      const injectedConnector = connectors.find((c) => c.id === 'injected') || connectors[0];
+      if (!injectedConnector) {
+        throw new Error('사용 가능한 connector가 없습니다.');
+      }
+      await connect({ connector: injectedConnector });
+    } catch (e: any) {
+      setErr(e?.message || '연결 실패');
+    }
+  }, [connect, connectors]);
+
+  const onDisconnect = useCallback(async () => {
+    setErr('');
+    try {
+      disconnect();
+      // 권한 철회 시도 (미지원 시 무시)
+      await (window as any)?.ethereum?.request?.({
+        method: 'wallet_revokePermissions',
+        params: [{ eth_accounts: {} }],
+      }).catch(() => {});
+    } catch (e: any) {
+      // ignore
+    }
+  }, [disconnect]);
+
+  const onLogin = useCallback(async () => {
+    setErr('');
+    setLoggingIn(true);
+    try {
+      const acc = (address || '').toLowerCase();
+      if (!acc) {
+        throw new Error('먼저 지갑을 연결하세요.');
+      }
+      // 1) nonce 요청
+      const nonceRes = await fetch(`/api/auth/nonce?address=${acc}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (!nonceRes.ok) {
+        const j = await nonceRes.json().catch(() => ({}));
+        throw new Error(j?.error || 'nonce 요청 실패');
+      }
+      const { nonce, message } = await nonceRes.json();
+      // 2) 서명
+      const signature = await signMessageAsync({ message });
+      // 3) 검증
+      const verifyRes = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ address: acc, signature, nonce }),
+      });
+      if (!verifyRes.ok) {
+        const j = await verifyRes.json().catch(() => ({}));
+        throw new Error(j?.error || '검증 실패');
+      }
+      const verified = await verifyRes.json();
+      setServerUser({ address: verified.address });
+    } catch (e: any) {
+      setErr(e?.message || '로그인 실패');
+    } finally {
+      setLoggingIn(false);
+    }
+  }, [address, signMessageAsync]);
+
+  const onLogout = useCallback(async () => {
+    setErr('');
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      setServerUser(null);
+    } catch (e: any) {
+      setErr(e?.message || '로그아웃 실패');
+    }
+  }, []);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <button onClick={onConnect} disabled={isConnected || connectStatus === 'pending'} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd' }}>
+          {isConnected ? '연결됨' : connectStatus === 'pending' ? '연결 중...' : '지갑 연결 (wagmi)'}
+        </button>
+        <button onClick={onDisconnect} disabled={!isConnected} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd' }}>
+          연결 해제
+        </button>
+        <button onClick={onLogin} disabled={!isConnected || loggingIn} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd' }}>
+          {loggingIn ? '로그인 중...' : '서명으로 로그인 (wagmi)'}
+        </button>
+        {serverUser && (
+          <button onClick={onLogout} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd' }}>
+            로그아웃
+          </button>
+        )}
+      </div>
+
+      <div style={{ fontSize: 14, color: '#444', marginBottom: 8 }}>
+        wagmi 연결 주소: <strong>{address || '-'}</strong>
+      </div>
+      <div style={{ fontSize: 14, color: serverUser ? '#2c7a7b' : '#444', marginBottom: 8 }}>
+        로그인 상태: <strong>{serverUser ? `✅ ${serverUser.address}` : '❌'}</strong>
+      </div>
+      {(err || connectError) && (
+        <div style={{ marginTop: 8, padding: 12, background: '#fdecea', border: '1px solid #f5c2c7', color: '#842029', borderRadius: 6 }}>
+          {err || connectError?.message}
+        </div>
+      )}
+    </div>
+  );
+}
 
