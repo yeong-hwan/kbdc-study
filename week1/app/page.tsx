@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { formatEther } from 'viem';
 
 type EthereumProvider = {
@@ -23,7 +23,12 @@ export default function Page() {
   const [error, setError] = useState<string>('');
   const [balance, setBalance] = useState<string>('-');
 
-  const hasProvider = useMemo(() => typeof window !== 'undefined' && !!window.ethereum, []);
+  // Hydration mismatch를 방지하기 위해 mount 이후에만 provider 여부를 평가
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const hasProvider = mounted && typeof window !== 'undefined' && !!window.ethereum;
 
   // 새로고침 시 세션 확인
   useEffect(() => {
@@ -72,8 +77,17 @@ export default function Page() {
   }, []);
 
   // 지갑 연결 해제 (Provider가 연결해제를 제공하지 않으므로 로컬 상태만 초기화)
-  const onDisconnect = useCallback(() => {
+  const onDisconnect = useCallback(async () => {
     setError('');
+    try {
+      // 일부 지갑에서 지원하는 권한 철회 메서드 (지원하지 않으면 예외 발생 가능)
+      await window.ethereum?.request?.({
+        method: 'wallet_revokePermissions',
+        params: [{ eth_accounts: {} }],
+      });
+    } catch {
+      // 미지원/실패는 무시하고 로컬 상태만 초기화
+    }
     setBalance('-');
     setAddress('');
     setConnected(false);
