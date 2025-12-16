@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatEther } from 'viem';
 
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<any>;
@@ -20,6 +21,7 @@ export default function Page() {
   const [loggingIn, setLoggingIn] = useState<boolean>(false);
   const [me, setMe] = useState<{ address: string } | null>(null);
   const [error, setError] = useState<string>('');
+  const [balance, setBalance] = useState<string>('-');
 
   const hasProvider = useMemo(() => typeof window !== 'undefined' && !!window.ethereum, []);
 
@@ -67,6 +69,14 @@ export default function Page() {
     } catch (e: any) {
       setError(e?.message || '지갑 연결 실패');
     }
+  }, []);
+
+  // 지갑 연결 해제 (Provider가 연결해제를 제공하지 않으므로 로컬 상태만 초기화)
+  const onDisconnect = useCallback(() => {
+    setError('');
+    setBalance('-');
+    setAddress('');
+    setConnected(false);
   }, []);
 
   // 로그인 흐름: nonce 요청 -> message 서명 -> verify
@@ -130,6 +140,24 @@ export default function Page() {
     }
   }, []);
 
+  // 잔고 조회
+  const onFetchBalance = useCallback(async () => {
+    setError('');
+    setBalance('-');
+    try {
+      if (!window.ethereum) throw new Error('Provider not found');
+      if (!address) throw new Error('먼저 지갑을 연결하세요.');
+      const hex: string = await window.ethereum.request({
+        method: 'eth_getBalance',
+        params: [address, 'latest'],
+      });
+      const wei = BigInt(hex);
+      setBalance(`${formatEther(wei)} ETH`);
+    } catch (e: any) {
+      setError(e?.message || '잔고 조회 실패');
+    }
+  }, [address]);
+
   return (
     <main style={{ maxWidth: 720, margin: '40px auto', padding: 16 }}>
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>EOA 기반 Web3 로그인 (EIP-1193)</h1>
@@ -144,6 +172,9 @@ export default function Page() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button onClick={onConnect} disabled={!hasProvider} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd' }}>
           {connected ? '지갑 재연결' : '지갑 연결'}
+        </button>
+        <button onClick={onDisconnect} disabled={!connected} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd' }}>
+          지갑 연결 해제
         </button>
         <button onClick={onLogin} disabled={!connected || loggingIn} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd' }}>
           {loggingIn ? '로그인 중...' : '서명으로 로그인'}
@@ -161,6 +192,12 @@ export default function Page() {
         </div>
         <div style={{ fontSize: 14, color: me ? '#2c7a7b' : '#444' }}>
           로그인 상태: <strong>{me ? `✅ ${me.address}` : '❌'}</strong>
+        </div>
+        <div style={{ fontSize: 14, color: '#444' }}>
+          잔고: <strong>{balance}</strong>
+          <button onClick={onFetchBalance} disabled={!connected} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 8, border: '1px solid #ddd' }}>
+            잔고 조회
+          </button>
         </div>
       </div>
 
