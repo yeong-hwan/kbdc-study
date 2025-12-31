@@ -16,7 +16,7 @@ if (is_sepolia) {
         "SEPOLIA_RPC_URL 이(가) 비어있습니다.",
         "- contracts/.env 에 SEPOLIA_RPC_URL 을 설정하세요.",
         "- 예: SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/<KEY>",
-      ].join("\n"),
+      ].join("\n")
     );
   }
   if (!PRIVATE_KEY) {
@@ -24,7 +24,7 @@ if (is_sepolia) {
       [
         "PRIVATE_KEY 이(가) 비어있습니다.",
         "- contracts/.env 에 PRIVATE_KEY 를 설정하세요. (0x로 시작)",
-      ].join("\n"),
+      ].join("\n")
     );
   }
 }

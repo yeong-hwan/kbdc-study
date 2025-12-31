@@ -31,6 +31,20 @@ pnpm -C contracts deploy:sepolia
 
 배포 후 출력되는 컨트랙트 주소를 기록하세요.
 
+### 4) (선택) Sepolia에서 직접 예치/출금 해보기
+배포된 주소를 `contracts/.env`의 `WETH_ADDRESS`에 넣은 뒤 아래를 실행하세요.
+
+```bash
+# 현재 잔고 확인 (ETH/WETH)
+pnpm -C contracts weth:sepolia status
+
+# 0.01 ETH 예치 -> 0.01 WETH 민팅
+pnpm -C contracts weth:sepolia deposit 0.01
+
+# 0.01 WETH 소각 -> 0.01 ETH 반환
+pnpm -C contracts weth:sepolia withdraw 0.01
+```
+
 ---
 
 ## 컨트랙트 설계 요약

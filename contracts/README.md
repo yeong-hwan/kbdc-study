@@ -4,6 +4,7 @@
 
 ### 환경 변수 준비
 - `contracts/env.example`을 참고해서 `contracts/.env` 파일을 직접 만드세요.
+  - (예시 파일은 커밋해도 되지만) 실제 `contracts/.env` 는 **절대 커밋하지 마세요.**
 
 ### 설치
 ```bash

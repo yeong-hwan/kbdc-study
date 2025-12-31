@@ -6,7 +6,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "node": "hardhat node",
-    "deploy:sepolia": "hardhat run scripts/deploy-sepolia.js --network sepolia"
+    "deploy:sepolia": "hardhat run scripts/deploy-sepolia.js --network sepolia",
+    "weth:sepolia": "HARDHAT_NETWORK=sepolia node scripts/weth-sepolia.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
