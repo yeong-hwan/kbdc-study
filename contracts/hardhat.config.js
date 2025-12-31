@@ -37,6 +37,11 @@ module.exports = {
       optimizer: { enabled: true, runs: 200 },
     },
   },
+  // Etherscan에서 Contract 소스코드가 보이려면 verify가 필요합니다.
+  // contracts/.env 의 ETHERSCAN_API_KEY 를 사용합니다.
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
+  },
   networks: {
     // 기본 하드햇 로컬 네트워크는 별도 설정 없이 사용 가능
     sepolia: {

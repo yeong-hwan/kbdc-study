@@ -22,5 +22,15 @@ pnpm -C contracts test
 pnpm -C contracts deploy:sepolia
 ```
 
+### (선택) Etherscan에 소스코드 Verify
+Etherscan에서 Contract 탭에 소스코드/Read/Write UI가 보이게 하려면 verify가 필요합니다.
+
+1) `contracts/.env`에 `ETHERSCAN_API_KEY`와 `WETH_ADDRESS`를 설정
+2) 아래 실행
+
+```bash
+pnpm -C contracts verify:sepolia
+```
+
 
 

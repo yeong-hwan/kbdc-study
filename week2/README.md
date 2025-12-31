@@ -45,6 +45,15 @@ pnpm -C contracts weth:sepolia deposit 0.01
 pnpm -C contracts weth:sepolia withdraw 0.01
 ```
 
+### 5) (선택) Etherscan에서 소스코드 보이게 하기 (Verify)
+Etherscan Contract 탭에서 소스코드/Read/Write UI가 안 보이면 verify가 안 된 상태입니다.
+
+- `contracts/.env`에 `ETHERSCAN_API_KEY`와 `WETH_ADDRESS`를 설정한 뒤:
+
+```bash
+pnpm -C contracts verify:sepolia
+```
+
 ---
 
 ## 컨트랙트 설계 요약
