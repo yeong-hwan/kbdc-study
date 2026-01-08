@@ -1,0 +1,28 @@
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+libs = ["lib"]
+
+# v2-core(0.5.16) + v2-periphery(0.6.6)가 섞여 있어서 pragma 기반으로 자동 선택
+auto_detect_solc = true
+
+# 로컬 import(remapping)만으로 빌드/테스트가 가능하도록 구성
+remappings = [
+  "@uniswap/v2-core/=../../v2-core/",
+  "@uniswap/v2-periphery/=../../v2-periphery/",
+]
+
+# 프로젝트 바깥(로컬 v2-core/v2-periphery) import를 허용
+fs_permissions = [
+  { access = "read", path = "../../v2-core" },
+  { access = "read", path = "../../v2-periphery" },
+]
+
+# solc의 --allow-paths 설정 (프로젝트 바깥 경로 import 허용)
+allow_paths = [
+  "../../v2-core",
+  "../../v2-periphery",
+]
+
+
